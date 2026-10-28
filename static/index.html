@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111312" />
+    <title>Orbit — Calculator</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        --canvas: #111312;
+        --panel: #191c1a;
+        --key: #242825;
+        --key-hover: #303632;
+        --muted: #898f8b;
+        --line: #2a2e2b;
+        --lime: #cbf27a;
+        --ink: #f5f7f3;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        padding: 32px 18px;
+        place-items: center;
+        background:
+          radial-gradient(ellipse at 50% 12%, rgba(108, 143, 67, .13), transparent 38%),
+          var(--canvas);
+        color: var(--ink);
+      }
+      button { color: inherit; font: inherit; }
+      button:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+      .layout { width: min(100%, 430px); }
+      .topline { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 17px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 720; letter-spacing: -.3px; }
+      .brand-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--lime);
+        color: #172012;
+        font-size: 18px;
+        font-weight: 850;
+      }
+      .keyboard-hint { color: var(--muted); font-size: 11px; }
+      .calculator {
+        overflow: hidden;
+        padding: 21px;
+        border: 1px solid #292e2a;
+        border-radius: 25px;
+        background: linear-gradient(150deg, #1d211e, #171a18 67%);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, .35), inset 0 1px rgba(255, 255, 255, .035);
+      }
+      .display {
+        display: flex;
+        min-height: 153px;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 9px 5px 22px;
+        text-align: right;
+      }
+      .display-label { margin-bottom: auto; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: 1.5px; text-align: left; text-transform: uppercase; }
+      .expression {
+        width: 100%;
+        overflow: hidden;
+        border: 0;
+        background: transparent;
+        color: #a4aaa5;
+        font-size: clamp(17px, 5vw, 21px);
+        font-weight: 450;
+        letter-spacing: .2px;
+        outline: none;
+        text-align: right;
+        text-overflow: ellipsis;
+      }
+      .expression::placeholder { color: #727974; }
+      .result { min-height: 53px; overflow: hidden; margin-top: 7px; font-size: clamp(36px, 11vw, 48px); font-weight: 560; letter-spacing: -2px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+      .result.error { color: #ff9587; font-size: 17px; letter-spacing: 0; white-space: normal; }
+      .divider { height: 1px; margin-bottom: 15px; background: var(--line); }
+      .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+      .key {
+        display: grid;
+        min-height: 66px;
+        place-items: center;
+        border: 1px solid transparent;
+        border-radius: 15px;
+        background: var(--key);
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 510;
+        transition: background .15s ease, transform .15s ease, border-color .15s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .key:hover { border-color: #3a413b; background: var(--key-hover); }
+      .key:active { transform: scale(.96); }
+      .key.utility { color: #c3cac4; font-size: 15px; font-weight: 650; }
+      .key.operator { background: #293128; color: var(--lime); font-size: 23px; }
+      .key.operator:hover { background: #343e30; }
+      .key.equals { background: var(--lime); color: #182014; font-size: 25px; font-weight: 760; }
+      .key.equals:hover { border-color: #e3ffac; background: #d7fa92; }
+      .key.zero { grid-column: span 2; justify-items: start; padding-left: 26px; }
+      .footer { margin-top: 15px; color: #6f7771; font-size: 10px; text-align: center; }
+      @media (max-width: 380px) {
+        .calculator { padding: 15px; border-radius: 21px; }
+        .keys { gap: 8px; }
+        .key { min-height: 59px; border-radius: 13px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <header class="topline">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">∑</span> Orbit</div>
+        <span class="keyboard-hint">Keyboard supported</span>
+      </header>
+      <section class="calculator" aria-label="Calculator">
+        <div class="display">
+          <div class="display-label">Quick calculation</div>
+          <input class="expression" id="expression" aria-label="Expression" placeholder="0" autocomplete="off" inputmode="decimal" />
+          <output class="result" id="result" aria-live="polite">0</output>
+        </div>
+        <div class="divider"></div>
+        <div class="keys" aria-label="Calculator keys">
+          <button class="key utility" data-action="clear" aria-label="Clear">AC</button>
+          <button class="key utility" data-action="backspace" aria-label="Delete last character">⌫</button>
+          <button class="key utility" data-value="(" aria-label="Open parenthesis">( )</button>
+          <button class="key operator" data-value="/" aria-label="Divide">÷</button>
+
+          <button class="key" data-value="7">7</button>
+          <button class="key" data-value="8">8</button>
+          <button class="key" data-value="9">9</button>
+          <button class="key operator" data-value="*">×</button>
+
+          <button class="key" data-value="4">4</button>
+          <button class="key" data-value="5">5</button>
+          <button class="key" data-value="6">6</button>
+          <button class="key operator" data-value="-">−</button>
+
+          <button class="key" data-value="1">1</button>
+          <button class="key" data-value="2">2</button>
+          <button class="key" data-value="3">3</button>
+          <button class="key operator" data-value="+">+</button>
+
+          <button class="key zero" data-value="0">0</button>
+          <button class="key" data-value=".">.</button>
+          <button class="key equals" data-action="calculate" aria-label="Calculate">=</button>
+        </div>
+      </section>
+      <footer class="footer">Calculations are evaluated securely by the Orbit API.</footer>
+    </main>
+    <script>
+      const expressionInput = document.querySelector("#expression");
+      const resultOutput = document.querySelector("#result");
+      let justCalculated = false;
+
+      function showResult(value, isError = false) {
+        resultOutput.textContent = value;
+        resultOutput.classList.toggle("error", isError);
+      }
+
+      function displayExpression(value) {
+        return value.replaceAll("*", "×").replaceAll("/", "÷").replaceAll("-", "−");
+      }
+
+      async function calculate() {
+        const expression = expressionInput.value.trim();
+        if (!expression) return;
+        showResult("…");
+        try {
+          const response = await fetch("/api/calc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expression }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "Unable to calculate.");
+          showResult(new Intl.NumberFormat(undefined, { maximumSignificantDigits: 12 }).format(data.result));
+          expressionInput.value = String(data.result);
+          justCalculated = true;
+        } catch (error) {
+          showResult(error.message || "Unable to reach the calculator API.", true);
+          justCalculated = false;
+        }
+      }
+
+      function insertValue(value) {
+        if (justCalculated && /[0-9.(]/.test(value)) expressionInput.value = "";
+        justCalculated = false;
+        const start = expressionInput.selectionStart ?? expressionInput.value.length;
+        const end = expressionInput.selectionEnd ?? start;
+        expressionInput.setRangeText(value, start, end, "end");
+        expressionInput.focus();
+        showResult(displayExpression(expressionInput.value) || "0");
+      }
+
+      document.querySelector(".keys").addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.dataset.action === "clear") {
+          expressionInput.value = "";
+          justCalculated = false;
+          showResult("0");
+          expressionInput.focus();
+        } else if (button.dataset.action === "backspace") {
+          const start = expressionInput.selectionStart ?? expressionInput.value.length;
+          const end = expressionInput.selectionEnd ?? start;
+          if (start === end && start > 0) expressionInput.setRangeText("", start - 1, end, "end");
+          else expressionInput.setRangeText("", start, end, "end");
+          justCalculated = false;
+          showResult(displayExpression(expressionInput.value) || "0");
+          expressionInput.focus();
+        } else if (button.dataset.action === "calculate") {
+          calculate();
+        } else if (button.dataset.value === "(") {
+          const value = expressionInput.value;
+          const openCount = (value.match(/\(/g) || []).length;
+          const closeCount = (value.match(/\)/g) || []).length;
+          if (openCount > closeCount) {
+            insertValue(")");
+          } else {
+            const start = expressionInput.selectionStart ?? value.length;
+            const previous = value[start - 1] || "";
+            insertValue(/[0-9.)]/.test(previous) ? "*(" : "(");
+          }
+        } else {
+          insertValue(button.dataset.value);
+        }
+      });
+
+      expressionInput.addEventListener("input", () => {
+        justCalculated = false;
+        showResult(displayExpression(expressionInput.value) || "0");
+      });
+      expressionInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === "=") {
+          event.preventDefault();
+          calculate();
+        }
+        if (event.key === "Escape") {
+          expressionInput.value = "";
+          justCalculated = false;
+          showResult("0");
+        }
+      });
+    </script>
+  </body>
+</html>
